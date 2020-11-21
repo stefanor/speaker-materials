@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'standalone',
     'materials',
 ]
 
@@ -121,6 +122,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# App-specific configuration
+MATERIALS = (
+    {
+        'name': 'Slides',
+        'extensions': ['pdf', 'odp', 'zip'],
+        'validators': ['materials.validators.filename'],
+    }, {
+        'name': 'Video',
+        'extensions': ['mp4', 'webm'],
+        'validators': ['materials.validators.filename'],
+    },
+)
+MATERIALS_EVENT_MODEL = 'standalone.Event'
 
 try:
     from standalone.localsettings import *
