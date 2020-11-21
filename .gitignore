@@ -1,0 +1,7 @@
+*.pyc
+.*.swp
+/db.sqlite3
+/standalone/localsettings.py
+/ve/
+/virtualenv/
+__pycache__/
