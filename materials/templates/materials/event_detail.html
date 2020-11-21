@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Event: {{ object.title }}{% endblock %}
+{% block content %}
+  <h1>Event: {{ object.title }}</h1>
+  {% for material in current_uploads %}
+    <h2>{{ material.name }}</h2>
+    {% if material.upload %}
+      <div>Uploaded {{ material.upload.created }}</div>
+      <div>FIXME: Download link</div>
+      <h3>Reviews:</h3>
+      <ul>
+        {% for review in material.reviews %}
+          <li>{{ review.action.label }}: {{ review.comment }}</li>
+        {% empty %}
+          <li>No reviews yet...</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <div>FIXME: Upload</div>
+  {% endfor %}
+  {% if deleted_uploads %}
+    <h2>Previous (deleted) uploads:</h2>
+    <ul>
+      {% for upload in deleted_uploads %}
+        <li>{{ upload.material_name }}: Uploaded: {{ upload.created }}. Deleted: {{ upload.deleted }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endblock %}
