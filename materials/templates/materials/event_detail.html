@@ -38,9 +38,6 @@
             <div class="upload-error alert alert-warning d-none">
               Upload failed: <span class="message"></span>
             </div>
-            <div class="upload-success alert alert-success d-none">
-              Upload completed: <span class="message"></span>
-            </div>
           </div>
         </div>
       </div>
@@ -102,8 +99,6 @@
         const progressDiv = element.querySelector('div.progress-bar');
         const errorDiv = element.querySelector('div.upload-error');
         const errorMsgSpan = errorDiv.querySelector('span');
-        const successDiv = element.querySelector('div.upload-success');
-        const successMsgSpan = successDiv.querySelector('span');
 
         function progress (percentage) {
             progressDiv.setAttribute('aria-valuenow', percentage);
@@ -117,7 +112,6 @@
           // TODO: Hash file with WebCrypto
           r.upload();
           browseBtn.classList.add('disabled');
-          successDiv.classList.add('d-none');
           uploadingDiv.classList.remove('d-none');
           progress(0);
         });
@@ -132,9 +126,8 @@
           })
           .then(response => response.json())
           .then(result => {
-            if (result['state'] == 'COMPLETED') {
-              successDiv.classList.remove('d-none');
-              successMsgSpan.innerHTML = result['sha256'];
+            if (result['state'] == 'CREATED') {
+              location.reload();
             }
           });
         });
