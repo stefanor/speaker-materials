@@ -1,8 +1,22 @@
+from itertools import count
+from logging import getLogger
+from hashlib import sha256
+from tempfile import TemporaryFile
+
+
 from django.conf import settings
+from django.core.exceptions import PermissionDenied
+from django.core.files.storage import get_storage_class
+from django.http.response import HttpResponse, JsonResponse
+from django.utils import timezone
 from django.views.generic import DetailView, ListView
+from django.views.generic.detail import BaseDetailView
 
 from materials import get_event_model
-from materials.models import Upload
+from materials.models import Upload, UploadStates
+
+
+log = getLogger(__name__)
 
 
 class EventListView(ListView):
@@ -23,7 +37,7 @@ class EventDetailView(DetailView):
             try:
                 material['upload'] = Upload.objects.get(
                     event=event, deleted__isnull=True,
-                    material=material['name'])
+                    material=material['id'])
             except Upload.DoesNotExist:
                 material['upload'] = None
             current_uploads.append(material)
@@ -32,3 +46,140 @@ class EventDetailView(DetailView):
         context['deleted_uploads'] = Upload.objects.filter(
             event=event).exclude(deleted__isnull=True).order_by('-created')
         return context
+
+
+class ResumableUploadView(BaseDetailView):
+    model = get_event_model()
+
+    def dispatch(self, request, *args, **kwargs):
+        self.event = self.get_object()
+        self.material = self.kwargs['material']
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        """Resumable.js checking if a chunk is already fully uploaded.
+        200 = yes, otherwise no.
+        """
+        target_path = self.get_chunk_path_from_url()
+        storage = self.get_storage()
+        if storage.exists(target_path):
+            chunk_size = int(self.request.GET['resumableChunkSize'])
+            if self.storage.size(target_path) == chunk_size:
+                return HttpResponse(status=200)
+        # Not 200 but not an error to avoid JS console logging
+        return HttpResponse(status=204)
+
+    def post(self, *args, **kwargs):
+        # Our Resumable.js wrapper: upload initiation & completion
+        action = self.request.POST.get('action')
+        if action == 'create':
+            return self.create_upload(
+                filename=self.request.POST['filename'],
+                size=self.request.POST['size'])
+        elif action == 'complete':
+            return self.complete_upload(self.request.POST['identifier'])
+        else:
+            return self.save_chunk()
+
+    def create_upload(self, filename, size):
+        """Prepare to receive an upload"""
+        # TODO validate size against settings
+
+        # Supersede existing uploads
+        for upload in Upload.objects.filter(
+                    event=self.event,
+                    material=self.material,
+                    deleted__isnull=True):
+            if upload.state == UploadStates.CREATED:
+                self.delete_upload_chunks(upload)
+            upload.deleted = timezone.now()
+            upload.save()
+
+        upload = Upload(
+            event=self.event,
+            material=self.material,
+            filename=filename,
+            size=size,
+        )
+        upload.save()
+
+        return JsonResponse({
+            'identifier': upload.id,
+        }, status=201)
+
+    def complete_upload(self, identifier):
+        """Combine all the chunks and hash them"""
+        upload = Upload.objects.get(id=identifier, event=self.event)
+        storage = self.get_storage()
+        hasher = sha256()
+        size = 0
+        with TemporaryFile() as temp_f:
+            for chunk in count(1):
+                path = self.get_chunk_path(upload, chunk)
+                if not storage.exists(path):
+                    break
+                with storage.open(path, 'rb') as chunk_f:
+                    for block in iter(lambda: chunk_f.read(1024*1024), b''):
+                        size += len(block)
+                        temp_f.write(block)
+                        hasher.update(block)
+
+            temp_f.seek(0)
+            if size == upload.size:
+                storage.save(upload.storage_path, temp_f)
+                upload.sha256 = hasher.hexdigest()
+                upload.completed = timezone.now()
+                upload.save()
+
+        self.delete_upload_chunks(upload)
+
+        return JsonResponse({
+            'state': upload.state,
+            'sha256': upload.sha256,
+        })
+
+    def delete_upload_chunks(self, upload):
+        storage = self.get_storage()
+        for chunk in count(1):
+            path = self.get_chunk_path(upload, chunk)
+            if storage.exists(path):
+                storage.delete(path)
+            else:
+                break
+
+    def save_chunk(self):
+        target_path = self.get_chunk_path_from_url()
+        storage = self.get_storage()
+        if storage.exists(target_path):
+            storage.delete(target_path)
+
+        if len(self.request.FILES) != 1:
+            raise PermissionDenied("Exactly one file will be accepted")
+        storage.save(target_path, next(self.request.FILES.values()))
+
+        return HttpResponse(status=201)
+
+    def get_storage(self):
+        return get_storage_class(import_path=settings.MATERIALS_STORAGE)()
+
+    def get_chunk_path_from_url(self):
+        GET = self.request.GET
+
+        resumableIdentifier = GET['resumableIdentifier']
+        upload = Upload.objects.get(id=resumableIdentifier, event=self.event)
+        if upload.state != UploadStates.CREATED:
+            raise PermissionDenied(
+                f'Upload is in state {upload.state}, not CREATED')
+
+        resumableChunkNumber = int(GET['resumableChunkNumber'])
+        resumableTotalSize = int(GET['resumableTotalSize'])
+        resumableTotalChunks = int(GET['resumableTotalChunks'])
+        if resumableTotalSize != upload.size:
+            raise PermissionDenied("Size mismatch")
+        if max(resumableChunkNumber, resumableTotalChunks) > 9999:
+            raise PermissionDenied("Chunks are too small")
+        return self.get_chunk_path(upload, resumableChunkNumber)
+
+    def get_chunk_path(self, upload, chunk):
+        return (f'{upload.event.slug}-{upload.material}-{upload.id}-'
+                f'{chunk:03}.part')

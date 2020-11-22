@@ -1,0 +1,10 @@
+{
+  "name": "speaker-materials",
+  "version": "0.0.0",
+  "license": "MIT/Expat",
+  "private": true,
+  "devDependencies": {
+    "bootstrap": "4.x",
+    "resumablejs": "1.x"
+  }
+}

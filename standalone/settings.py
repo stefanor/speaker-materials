@@ -126,16 +126,20 @@ STATIC_URL = '/static/'
 # App-specific configuration
 MATERIALS = (
     {
+        'id': 'slides',
         'name': 'Slides',
         'extensions': ['pdf', 'odp', 'zip'],
         'validators': ['materials.validators.filename'],
     }, {
+        'id': 'video',
         'name': 'Video',
         'extensions': ['mp4', 'webm'],
         'validators': ['materials.validators.filename'],
     },
 )
 MATERIALS_EVENT_MODEL = 'standalone.Event'
+MATERIALS_STORAGE = 'django.core.files.storage.FileSystemStorage'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 try:
     from standalone.localsettings import *

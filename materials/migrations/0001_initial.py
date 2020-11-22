@@ -20,11 +20,15 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('material', models.CharField(max_length=32)),
+                ('filename', models.CharField(max_length=128)),
+                ('sha256', models.CharField(blank=True, max_length=64, null=True)),
+                ('size', models.IntegerField()),
                 ('created', models.DateTimeField(auto_now_add=True)),
                 ('updated', models.DateTimeField(auto_now=True)),
+                ('uploaded', models.DateTimeField(blank=True, null=True)),
                 ('deleted', models.DateTimeField(blank=True, null=True)),
                 ('event', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to=settings.MATERIALS_EVENT_MODEL)),
-                ('uploader', models.ForeignKey(on_delete=django.db.models.deletion.RESTRICT, to=settings.AUTH_USER_MODEL)),
+                ('uploader', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.RESTRICT, to=settings.AUTH_USER_MODEL)),
             ],
         ),
         migrations.CreateModel(
