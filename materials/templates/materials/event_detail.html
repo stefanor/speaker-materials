@@ -114,7 +114,7 @@
         r.assignBrowse(browseBtn);
 
         r.on('fileAdded', file => {
-          // TODO: Hash flile with WebCrypto
+          // TODO: Hash file with WebCrypto
           r.upload();
           browseBtn.classList.add('disabled');
           successDiv.classList.add('d-none');
