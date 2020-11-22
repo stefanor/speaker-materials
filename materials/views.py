@@ -6,7 +6,6 @@ from tempfile import TemporaryFile
 
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
-from django.core.files.storage import get_storage_class
 from django.http.response import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.generic import DetailView, ListView
@@ -14,6 +13,7 @@ from django.views.generic.detail import BaseDetailView
 
 from materials import get_event_model
 from materials.models import Upload, UploadStates
+from materials.storage import get_chunk_path, get_storage, get_temp_storage
 
 
 log = getLogger(__name__)
@@ -61,7 +61,7 @@ class ResumableUploadView(BaseDetailView):
         200 = yes, otherwise no.
         """
         target_path = self.get_chunk_path_from_url()
-        storage = self.get_storage()
+        storage = get_temp_storage()
         if storage.exists(target_path):
             chunk_size = int(self.request.GET['resumableChunkSize'])
             if self.storage.size(target_path) == chunk_size:
@@ -110,15 +110,16 @@ class ResumableUploadView(BaseDetailView):
     def complete_upload(self, identifier):
         """Combine all the chunks and hash them"""
         upload = Upload.objects.get(id=identifier, event=self.event)
-        storage = self.get_storage()
+        temp_storage = get_temp_storage()
+        storage = get_storage()
         hasher = sha256()
         size = 0
         with TemporaryFile() as temp_f:
             for chunk in count(1):
-                path = self.get_chunk_path(upload, chunk)
-                if not storage.exists(path):
+                path = get_chunk_path(upload, chunk)
+                if not temp_storage.exists(path):
                     break
-                with storage.open(path, 'rb') as chunk_f:
+                with temp_storage.open(path, 'rb') as chunk_f:
                     for block in iter(lambda: chunk_f.read(1024*1024), b''):
                         size += len(block)
                         temp_f.write(block)
@@ -139,28 +140,25 @@ class ResumableUploadView(BaseDetailView):
         })
 
     def delete_upload_chunks(self, upload):
-        storage = self.get_storage()
+        temp_storage = get_temp_storage()
         for chunk in count(1):
-            path = self.get_chunk_path(upload, chunk)
-            if storage.exists(path):
-                storage.delete(path)
+            path = get_chunk_path(upload, chunk)
+            if temp_storage.exists(path):
+                temp_storage.delete(path)
             else:
                 break
 
     def save_chunk(self):
         target_path = self.get_chunk_path_from_url()
-        storage = self.get_storage()
-        if storage.exists(target_path):
-            storage.delete(target_path)
+        temp_storage = get_temp_storage()
+        if temp_storage.exists(target_path):
+            temp_storage.delete(target_path)
 
         if len(self.request.FILES) != 1:
             raise PermissionDenied("Exactly one file will be accepted")
-        storage.save(target_path, next(self.request.FILES.values()))
+        temp_storage.save(target_path, next(self.request.FILES.values()))
 
         return HttpResponse(status=201)
-
-    def get_storage(self):
-        return get_storage_class(import_path=settings.MATERIALS_STORAGE)()
 
     def get_chunk_path_from_url(self):
         GET = self.request.GET
@@ -178,8 +176,4 @@ class ResumableUploadView(BaseDetailView):
             raise PermissionDenied("Size mismatch")
         if max(resumableChunkNumber, resumableTotalChunks) > 9999:
             raise PermissionDenied("Chunks are too small")
-        return self.get_chunk_path(upload, resumableChunkNumber)
-
-    def get_chunk_path(self, upload, chunk):
-        return (f'{upload.event.slug}-{upload.material}-{upload.id}-'
-                f'{chunk:03}.part')
+        return get_chunk_path(upload, resumableChunkNumber)

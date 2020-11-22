@@ -139,6 +139,7 @@ MATERIALS = (
 )
 MATERIALS_EVENT_MODEL = 'standalone.Event'
 MATERIALS_STORAGE = 'django.core.files.storage.FileSystemStorage'
+MATERIALS_TEMP_STORAGE = 'django.core.files.storage.FileSystemStorage'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 try:
