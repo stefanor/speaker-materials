@@ -35,7 +35,9 @@ class Upload(models.Model):
 
     @property
     def material_name(self):
-        return settings.MATERIALS[self.material]['name']
+        material = next(mat for mat in settings.MATERIALS
+                        if mat['id'] == self.material)
+        return material['name']
 
     @property
     def storage_path(self):
