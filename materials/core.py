@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 from collections import OrderedDict
 from typing import List
 
 from django.conf import settings
 
-materials: OrderedDict[str, Material] = OrderedDict()
+materials: OrderedDict[str, 'Material'] = OrderedDict()
 
 
 class Material:

@@ -1,9 +1,9 @@
-from django.db import models
+from django.db.models import TextField, Model
 
 
-class Event(models.Model):
-    title = models.TextField()
-    slug = models.TextField()
+class Event(Model):
+    title: TextField = TextField()
+    slug: TextField = TextField()
 
     class Meta:
         swappable = 'MATERIALS_EVENT_MODEL'
