@@ -37,7 +37,7 @@ class EventDetailView(DetailView):
             try:
                 material['upload'] = Upload.objects.get(
                     event=event, deleted__isnull=True,
-                    material=material['id'])
+                    material_id=material['id'])
             except Upload.DoesNotExist:
                 material['upload'] = None
             current_uploads.append(material)
@@ -88,7 +88,7 @@ class ResumableUploadView(BaseDetailView):
         # Supersede existing uploads
         for upload in Upload.objects.filter(
                     event=self.event,
-                    material=self.material,
+                    material_id=self.material,
                     deleted__isnull=True):
             if upload.state == UploadStates.CREATED:
                 self.delete_upload_chunks(upload)
@@ -97,7 +97,7 @@ class ResumableUploadView(BaseDetailView):
 
         upload = Upload(
             event=self.event,
-            material=self.material,
+            material_id=self.material,
             filename=filename,
             size=size,
         )

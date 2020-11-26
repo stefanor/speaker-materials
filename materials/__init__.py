@@ -3,6 +3,9 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 
+default_app_config = 'materials.apps.MaterialsConfig'
+
+
 class EventInterface():
     """
     Interface to implement for settings.MATERIALS_EVENT_MODEL

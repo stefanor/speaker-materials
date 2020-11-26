@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='Upload',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('material', models.CharField(max_length=32)),
+                ('material_id', models.CharField(max_length=32)),
                 ('filename', models.CharField(max_length=128)),
                 ('sha256', models.CharField(blank=True, max_length=64, null=True)),
                 ('size', models.IntegerField()),

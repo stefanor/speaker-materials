@@ -1,9 +1,9 @@
-from django.conf import settings
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
 from materials import get_event_model
+from materials.core import get_material
 
 
 class UploadStates(models.TextChoices):
@@ -14,7 +14,7 @@ class UploadStates(models.TextChoices):
 
 class Upload(models.Model):
     event = models.ForeignKey(get_event_model(), on_delete=models.RESTRICT)
-    material = models.CharField(max_length=32)
+    material_id = models.CharField(max_length=32)
     filename = models.CharField(max_length=128)
     sha256 = models.CharField(max_length=64, blank=True, null=True)
     size = models.IntegerField()
@@ -34,15 +34,13 @@ class Upload(models.Model):
         return UploadStates.CREATED
 
     @property
-    def material_name(self):
-        material = next(mat for mat in settings.MATERIALS
-                        if mat['id'] == self.material)
-        return material['name']
+    def material(self):
+        return get_material(self.material_id)
 
     @property
     def storage_path(self):
         extension = self.filename.rsplit('.', 1)[-1]
-        return f'{self.event.slug}-{self.material}-{self.id}.{extension}'
+        return f'{self.event.slug}-{self.material_id}-{self.id}.{extension}'
 
 
 class Review(models.Model):

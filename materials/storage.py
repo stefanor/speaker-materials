@@ -14,5 +14,5 @@ def get_temp_storage():
 
 def get_chunk_path(upload, chunk):
     """Temporary chunk filename"""
-    return (f'{upload.event.slug}-{upload.material}-{upload.id}-'
+    return (f'{upload.event.slug}-{upload.material_id}-{upload.id}-'
             f'{chunk:03}.part')
