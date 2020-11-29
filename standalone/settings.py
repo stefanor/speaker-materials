@@ -144,6 +144,6 @@ MATERIALS_TEMP_STORAGE = 'django.core.files.storage.FileSystemStorage'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 try:
-    from standalone.localsettings import *
+    from standalone.localsettings import *  # type: ignore
 except ImportError:
     pass
