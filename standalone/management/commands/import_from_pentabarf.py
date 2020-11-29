@@ -20,5 +20,6 @@ class Command(BaseCommand):
         for event in tree.findall('.//event'):
             conf_url = event.findtext('conf_url')
             slug = conf_url.strip('/').rsplit('/', 1)[-1]
-            Event.objects.update_or_create(slug=slug,
+            Event.objects.update_or_create(
+                slug=slug,
                 defaults={'title': event.findtext('title')})
