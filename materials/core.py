@@ -21,6 +21,7 @@ class Material:
 
 
 def load_materials():
+    """Populate materials"""
     global materials
     for material_dict in settings.MATERIALS:
         material = Material(material_dict)
@@ -28,4 +29,8 @@ def load_materials():
 
 
 def get_material(material_id: str) -> Material:
+    """Retreive a Material by ID.
+
+    materials is a common name, this getter will avoid needing to import it.
+    """
     return materials[material_id]
