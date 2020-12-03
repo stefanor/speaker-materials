@@ -137,7 +137,7 @@ class ResumableUploadView(BaseDetailView):
         return JsonResponse({
             'state': upload.state,
             'sha256': upload.sha256,
-        })
+        }, status=201)
 
     def delete_upload_chunks(self, upload):
         temp_storage = get_temp_storage()
