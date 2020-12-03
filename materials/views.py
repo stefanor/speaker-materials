@@ -64,7 +64,7 @@ class ResumableUploadView(BaseDetailView):
         storage = get_temp_storage()
         if storage.exists(target_path):
             chunk_size = int(self.request.GET['resumableChunkSize'])
-            if self.storage.size(target_path) == chunk_size:
+            if storage.size(target_path) == chunk_size:
                 return HttpResponse(status=200)
         # Not 200 but not an error to avoid JS console logging
         return HttpResponse(status=204)
