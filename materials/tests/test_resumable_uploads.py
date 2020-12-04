@@ -9,6 +9,20 @@ from materials.tests.support import MockStorageTestCase
 from materials.storage import get_chunk_path, get_temp_storage
 
 
+def make_args(**override):
+    args = {
+        'resumableIdentifier': 'id',
+        'resumableChunkNumber': 1,
+        'resumableChunkSize': 1024,
+        'resumableTotalSize': 1024,
+        'resumableTotalChunks': 1,
+        'resumableFilename': 'test.bin',
+        'resumableRelativePath': './test.bin',
+    }
+    args.update(override)
+    return urlencode(args)
+
+
 class SingleChunkTestCase(MockStorageTestCase):
     def setUp(self):
         super().setUp()
@@ -22,13 +36,8 @@ class SingleChunkTestCase(MockStorageTestCase):
         identifier = r.json()['identifier']
         self.assertTrue(identifier)
 
-        args = {
-            'resumableIdentifier': identifier,
-            'resumableChunkNumber': 1,
-            'resumableTotalSize': 1024,
-            'resumableTotalChunks': 1,
-        }
-        r = c.post('/events/test/upload/slides?' + urlencode(args),
+        r = c.post('/events/test/upload/slides?'
+                   + make_args(resumableIdentifier=identifier),
                    {'file': BytesIO(b'\xde\xad\xbe\xef' * 256)})
         self.assertEqual(r.status_code, 201)
         r = c.post('/events/test/upload/slides',
@@ -46,13 +55,7 @@ class ChunkTestCase(MockStorageTestCase):
         self.upload = Upload.objects.create(
             event=self.event, material_id='slides', filename='test.pdf',
             size=1024)
-        self.args = {
-            'resumableIdentifier': self.upload.id,
-            'resumableChunkNumber': 1,
-            'resumableChunkSize': 1024,
-            'resumableTotalSize': 1024,
-            'resumableTotalChunks': 1,
-        }
+        self.args = make_args(resumableIdentifier=self.upload.id)
 
     def complete(self):
         c = Client()
@@ -65,7 +68,7 @@ class ChunkTestCase(MockStorageTestCase):
 
     def test_get_nonexistant(self):
         c = Client()
-        r = c.get('/events/test/upload/slides?' + urlencode(self.args))
+        r = c.get('/events/test/upload/slides?' + self.args)
         self.assertEqual(r.status_code, 204)
 
     def test_get_existant(self):
@@ -73,7 +76,7 @@ class ChunkTestCase(MockStorageTestCase):
             get_chunk_path(self.upload, 1),
             BytesIO(b'\xde\xad\xbe\xef' * 256))
         c = Client()
-        r = c.get('/events/test/upload/slides?' + urlencode(self.args))
+        r = c.get('/events/test/upload/slides?' + self.args)
         self.assertEqual(r.status_code, 200)
 
     def test_get_existant_too_small(self):
@@ -81,23 +84,23 @@ class ChunkTestCase(MockStorageTestCase):
             get_chunk_path(self.upload, 1),
             BytesIO(b'\xde\xad\xbe\xef' * 255))
         c = Client()
-        r = c.get('/events/test/upload/slides?' + urlencode(self.args))
+        r = c.get('/events/test/upload/slides?' + self.args)
         self.assertEqual(r.status_code, 204)
 
     def test_upload_single_chunk(self):
         c = Client()
-        r = c.post('/events/test/upload/slides?' + urlencode(self.args),
+        r = c.post('/events/test/upload/slides?' + self.args,
                    {'file': BytesIO(b'\xde\xad\xbe\xef' * 256)})
         self.assertEqual(r.status_code, 201)
         self.complete()
 
     def test_upload_multi_chunk(self):
         c = Client()
-        args = self.args.copy()
-        args['resumableChunkSize'] = 512
         for i in range(4):
-            args['resumableChunkNumber'] = i + 1
-            r = c.post('/events/test/upload/slides?' + urlencode(args),
+            args = make_args(resumableIdentifier=self.upload.id,
+                             resumableChunkSize=512,
+                             resumableChunkNumber=i + 1)
+            r = c.post('/events/test/upload/slides?' + args,
                        {'file': BytesIO(b'\xde\xad\xbe\xef' * 64)})
             self.assertEqual(r.status_code, 201)
         self.complete()
@@ -107,7 +110,7 @@ class ChunkTestCase(MockStorageTestCase):
             get_chunk_path(self.upload, 1),
             BytesIO(b'\x00\x00\x00\x00' * 255))
         c = Client()
-        r = c.post('/events/test/upload/slides?' + urlencode(self.args),
+        r = c.post('/events/test/upload/slides?' + self.args,
                    {'file': BytesIO(b'\xde\xad\xbe\xef' * 256)})
         self.assertEqual(r.status_code, 201)
         self.complete()
